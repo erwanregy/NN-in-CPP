@@ -1,12 +1,12 @@
 #pragma once
 
 #include "DenseLayer.hpp"
+//#include "ConvolutionalLayer.hpp"
+#include "PoolingLayer.hpp"
 
 #include <vector>
 #include <memory>
 #include <iostream>
-#include <fstream>
-#include <filesystem>
 
 enum class LayerType : char {
     Dense,
@@ -17,13 +17,18 @@ enum class LayerType : char {
 struct LayerBuilder {
     LayerType type;
     size_t size;
-    ActivationType activation_type;    
+    ActivationType activation_type;
+    size_t input_width;
+    size_t input_height;
+    size_t kernel_size;
+    size_t num_kernels;
+    size_t stride;
+    PoolingType pooling_type;
 };
 
 struct NeuralNetwork {
 
-    //std::vector<std::unique_ptr<Layer>> layers;
-    std::vector<std::unique_ptr<DenseLayer>> layers; // temp
+    std::vector<std::unique_ptr<DenseLayer>> layers;
     std::vector<double> outputs;
 
     NeuralNetwork() : layers(), outputs() {}
@@ -109,7 +114,7 @@ struct NeuralNetwork {
         std::cout << "Accuracy: " << static_cast<double>(num_correct) / inputs.size() << '%' << std::endl;
     }
 
-    void save(std::string model_path) {
+    void save(const std::string& model_path) {
         if (std::filesystem::exists(model_path)) {
             std::cout << "Folder '" << model_path << "' already exists. Overwrite? (y/N): " << std::flush;
             if (std::cin.get() != 'y') {
@@ -121,42 +126,17 @@ struct NeuralNetwork {
         std::filesystem::create_directory(model_path);
         for (size_t l = 0; l < layers.size(); l++) {
             std::string layer_path = model_path + "/layer_" + std::to_string(l);
-            std::filesystem::create_directory(layer_path);
-            for (size_t n = 0; n < layers[l]->neurons.size(); n++) {
-                std::string neuron_path = layer_path + "/neuron_" + std::to_string(n);
-                std::filesystem::create_directory(neuron_path);
-                std::ofstream weights_file(neuron_path + "/weights.txt");
-                for (auto weight : layers[l]->neurons[n].weights) {
-                    weights_file << weight << '\n';
-                }
-                std::ofstream bias_file(neuron_path + "/bias.txt");
-                bias_file << layers[l]->neurons[n].bias << '\n';
-                bias_file.close();
-            }
+            layers[l]->save(layer_path);
         }
     }
 
-    void load(std::string model_path) {
+    void load(const std::string& model_path) {
         if (not std::filesystem::exists(model_path)) {
             throw std::runtime_error("Folder '" + model_path + "' does not exist.");
         }
         for (size_t l = 0; l < layers.size(); l++) {
             std::string layer_path = model_path + "/layer_" + std::to_string(l);
-            for (size_t n = 0; n < layers[l]->neurons.size(); n++) {
-                std::string neuron_path = layer_path + "/neuron_" + std::to_string(n);
-                std::ifstream weights_file(neuron_path + "/weights.txt");
-                for (auto& weight : layers[l]->neurons[n].weights) {
-                    std::string line;
-                    std::getline(weights_file, line);
-                    weight = std::stod(line);
-                }
-                weights_file.close();
-                std::ifstream bias_file(neuron_path + "/bias.txt");
-                std::string line;
-                std::getline(bias_file, line);
-                layers[l]->neurons[n].bias = std::stod(line);
-                bias_file.close();
-            }
+            layers[l]->load(layer_path);
         }
     }
 };

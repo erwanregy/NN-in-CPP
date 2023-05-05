@@ -7,7 +7,10 @@
 #include <fstream>
 #include <vector>
 
-using image_t = std::array<std::array<uint8_t, 28>, 28>;
+using input_t = std::vector<double>;
+using pixel_t = uint8_t;
+using image_t = std::array<std::array<pixel_t, 28>, 28>;
+using label_t = uint8_t;
 
 uint32_t swap_endianness(uint32_t word) {
     return ((word & 0xff) << 24) | ((word & 0xff00) << 8) | ((word & 0xff0000) >> 8) | ((word & 0xff000000) >> 24);
@@ -54,7 +57,7 @@ std::vector<image_t> extract_images(std::string images_path, size_t num_images =
             for (auto& pixel : row) {
                 uint8_t value = 0;
                 file.read(reinterpret_cast<char*>(&value), sizeof(value));
-                pixel = static_cast<uint8_t>(static_cast<double>(value) / 255.0);
+                pixel = value;
             }
         }
     }
@@ -62,12 +65,12 @@ std::vector<image_t> extract_images(std::string images_path, size_t num_images =
     return images;
 }
 
-std::vector<std::vector<double>> extract_inputs(std::string images_path, size_t num_images = 0) {
+std::vector<input_t> extract_inputs(std::string images_path, size_t num_images = 0) {
     std::ifstream file = open_file(images_path);
 
     extract_header<3>(file, num_images);
 
-    std::vector<std::vector<double>> inputs(num_images, std::vector<double>(28 * 28));
+    std::vector<input_t> inputs(num_images, input_t(28 * 28));
 
     for (auto& input : inputs) {
         for (auto& pixel : input) {
@@ -80,18 +83,18 @@ std::vector<std::vector<double>> extract_inputs(std::string images_path, size_t 
     return inputs;
 }
 
-std::tuple<std::vector<image_t>, std::vector<std::vector<double>>> extract_images_and_inputs(std::string images_path, size_t num_images = 0) {
+std::tuple<std::vector<image_t>, std::vector<input_t>> extract_images_and_inputs(std::string images_path, size_t num_images = 0) {
     std::ifstream file = open_file(images_path);
 
     extract_header<3>(file, num_images);
 
     std::vector<image_t> images(num_images);
-    std::vector<std::vector<double>> inputs(num_images, std::vector<double>(28 * 28));
+    std::vector<input_t> inputs(num_images, input_t(28 * 28));
 
     for (size_t image = 0; image < num_images; image++) {
         for (size_t row = 0; row < 28; row++) {
             for (size_t column = 0; column < 28; column++) {
-                uint8_t value;
+                uint8_t value = 0;
                 file.read(reinterpret_cast<char*>(&value), sizeof(value));
                 images[image][row][column] = value;
                 inputs[image][row * 28 + column] = static_cast<double>(value) / 255.0;
@@ -102,12 +105,12 @@ std::tuple<std::vector<image_t>, std::vector<std::vector<double>>> extract_image
     return std::make_tuple(images, inputs);
 }
 
-std::vector<size_t> extract_labels(std::string labels_path, size_t num_labels = 0) {
+std::vector<label_t> extract_labels(std::string labels_path, size_t num_labels = 0) {
     std::ifstream file = open_file(labels_path);
 
     extract_header<1>(file, num_labels);
 
-    std::vector<size_t> labels(num_labels);
+    std::vector<label_t> labels(num_labels);
 
     for (auto& label : labels) {
         uint8_t value = 0;
@@ -118,10 +121,10 @@ std::vector<size_t> extract_labels(std::string labels_path, size_t num_labels = 
     return labels;
 }
 
-std::tuple<std::vector<image_t>, std::vector<std::vector<double>>, std::vector<size_t>> extract(std::string images_path, std::string labels_path, size_t num_images) {
+std::tuple<std::vector<image_t>, std::vector<input_t>, std::vector<label_t>> extract(std::string images_path, std::string labels_path, size_t num_images) {
     std::vector<image_t> images;
-    std::vector<std::vector<double>> inputs;
-    std::vector<size_t> labels;
+    std::vector<input_t> inputs;
+    std::vector<label_t> labels;
 
     std::tie(images, inputs) = extract_images_and_inputs(images_path, num_images);
     labels = extract_labels(labels_path, num_images);

@@ -27,23 +27,19 @@ struct Vector2 {
 
 	Vector2 operator*(const Vector2& rhs) const { return Vector2(x * rhs.x, y * rhs.y); }
 
-	template <typename type2>
-	Vector2 operator*(type2 rhs) const { return Vector2(x * rhs, y * rhs); }
+	Vector2 operator*(type rhs) const { return Vector2(x * rhs, y * rhs); }
 
 	Vector2& operator*=(const Vector2& rhs) { return *this = *this * rhs; }
 
-	template <typename type2>
-	Vector2& operator*=(type2 rhs) { return *this = *this * rhs; }
+	Vector2& operator*=(type rhs) { return *this = *this * rhs; }
 
 	Vector2 operator/(const Vector2& rhs) const { return Vector2(x / rhs.x, y / rhs.y); }
 
-	template <typename type2>
-	Vector2 operator/(type2 rhs) const { return Vector2(x / rhs, y / rhs); }
+	Vector2 operator/(type rhs) const { return Vector2(x / rhs, y / rhs); }
 
 	Vector2& operator/=(const Vector2& rhs) { return *this = *this / rhs; }
 
-	template <typename type2>
-	Vector2& operator/=(type2 rhs) { return *this = *this / rhs; }
+	Vector2& operator/=(type rhs) { return *this = *this / rhs; }
 
 	bool operator<(const Vector2& rhs) const { return x < rhs.x and y < rhs.y; }
 

@@ -8,21 +8,16 @@
 #include <vector>
 #include <chrono>
 #include <fstream>
-#include <optional>
 
-using Dimensions = Vector2<unsigned short>;
-using Coordinate = Vector2<short>;
-using Vector = Vector2<double>;
-
-bool in_range(const Coordinate& coordinate, const Dimensions& dimensions) {
-	return coordinate >= Coordinate(0, 0) and coordinate < Coordinate(dimensions.x, dimensions.y);
+bool in_range(const Vector2<int>& coordinate, const Vector2<int>& dimensions) {
+	return coordinate >= Vector2<int>(0, 0) and coordinate < dimensions;
 }
 
-unsigned short coordinate_to_index(const Coordinate& coordinate, const unsigned short width) {
+int coordinate_to_index(const Vector2<int>& coordinate, const int width) {
 	return coordinate.y * width + coordinate.x;
 }
 
-enum Colour : unsigned short {
+enum class Colour : WORD {
 	Black = 0x0000,
 	DarkBlue = 0x0001,
 	DarkGreen = 0x0002,
@@ -41,7 +36,7 @@ enum Colour : unsigned short {
 	White = 0x000F,
 };
 
-enum Shade : wchar_t {
+enum class Shade : WCHAR {
 	Empty = 0x0020,
 	Quarter = 0x2591,
 	Half = 0x2592,
@@ -49,16 +44,32 @@ enum Shade : wchar_t {
 	Full = 0x2588,
 };
 
-struct Pixel {
+class Pixel {
+
+private:
+	
 	Colour colour;
 	Shade shade;
-	Pixel() : colour(White), shade(Full) {}
-	Pixel(const Colour colour) : colour(colour), shade(Full) {}
-	Pixel(const Shade shade) : colour(White), shade(shade) {}
+
+public:
+
+	Pixel() : colour(Colour::White), shade(Shade::Full) {}
+	Pixel(const Colour colour) : colour(colour), shade(Shade::Full) {}
+	Pixel(const Shade shade) : colour(Colour::White), shade(shade) {}
 	Pixel(const Colour colour, const Shade shade) : colour(colour), shade(shade) {}
-	friend std::wostream& operator<<(std::wostream& stream, const Pixel& pixel) { return stream << pixel.colour << L' ' << pixel.shade; }
+
+	Colour get_colour() const {
+        return colour;
+    }
+	Shade get_shade() const {
+        return shade;
+    }
+
+	friend std::wostream& operator<<(std::wostream& stream, const Pixel& pixel) {
+		return stream << static_cast<unsigned short>(pixel.colour) << L' ' << static_cast<wchar_t>(pixel.shade);
+	}
 	friend std::wistream& operator>>(std::wistream& stream, Pixel& pixel) {
-		short colour, shade;
+		int colour, shade;
 		stream >> colour >> shade;
 		pixel = Pixel(Colour(colour), Shade(shade));
 		return stream;
@@ -67,89 +78,83 @@ struct Pixel {
 
 class Sprite {
 
-	Dimensions dimensions;
+private:
 
+	Vector2<int> dimensions;
 	std::vector<Pixel> texture;
 
 public:
 
 	Sprite() : dimensions({ 0, 0 }), texture() {}
-
-	Sprite(Dimensions dimensions) : dimensions(dimensions), texture(dimensions.x* dimensions.y) {}
-
+	Sprite(Vector2<int> dimensions) : dimensions(dimensions), texture(dimensions.x* dimensions.y) {}
 	Sprite(std::string filename) {
 		load(filename);
 	}
 
-	Dimensions get_dimensions() const {
+	const Vector2<int>& get_dimensions() const {
 		return dimensions;
 	}
-
-	Pixel get_pixel(const Coordinate& coordinate) const {
+	int get_width() const {
+        return dimensions.x;
+    }
+	int get_height() const {
+        return dimensions.y;
+    }
+	Pixel get_pixel(const Vector2<int>& coordinate) const {
 		if (in_range(coordinate, dimensions)) {
 			return texture[coordinate_to_index(coordinate, dimensions.x)];
 		} else {
-			return Pixel(White, Empty);
+			return { Colour::White, Shade::Empty };
 		}
 	}
 
 	void save(const std::string& filename) const {
 		std::wofstream filestream(filename, std::ios::out | std::ios::trunc);
-
 		if (not filestream.is_open()) {
 			throw std::runtime_error("Unable to open file '" + filename + "'");
 		}
-
 		filestream << dimensions;
 		for (const Pixel& pixel : texture) {
 			filestream << ' ' << pixel;
 		}
-
 		filestream.close();
 	}
-
 	void load(const std::string& filename) {
 		std::wifstream filestream(filename, std::ios::in);
-
 		if (not filestream.is_open()) {
 			throw std::runtime_error("Unable to open file '" + filename + "'");
 		}
-
 		filestream >> dimensions;
-
 		texture = std::vector<Pixel>(dimensions.x * dimensions.y);
-
 		for (Pixel& pixel : texture) {
 			filestream >> pixel;
 		}
-
 		filestream.close();
 	}
 };
 
 class Entity {
+
 	Sprite sprite;
-public: // temp
-	Dimensions size;
-	Vector position;
-	Vector velocity;
-	Vector acceleration;
+	Vector2<int> size;
+	Vector2<double> position;
+	Vector2<double> velocity;
+	Vector2<double> acceleration;
+
 public:
 
 	Entity() : sprite(), size({ 0, 0 }), position({ 0, 0 }), velocity({ 0, 0 }), acceleration({ 0, 0 }) {}
-
 	Entity(const std::string& filename) : sprite(filename), size({ 0, 0 }), position({ 0, 0 }), velocity({ 0, 0 }), acceleration({ 0, 0 }) {}
 
-	void set_position(const Vector& position) {
-		this->position = position;
+	const Sprite& get_sprite() const {
+		return sprite;
 	}
-
-	Vector get_position() const {
+	const Vector2<double>& get_position() const {
 		return position;
 	}
 
-	Sprite get_sprite() const {
-		return sprite;
+	void set_position(const Vector2<double>& position) {
+		this->position = position;
 	}
 
 	void update(const double time) {
@@ -158,9 +163,9 @@ public:
 	}
 };
 
-class ConsoleGameEngine {
+class ConsoleGraphicsEngine {
 
-protected:
+private:
 
 	class Timer {
 		struct {
@@ -181,19 +186,21 @@ protected:
 		}
 	} timer;
 
-	enum ButtonState : char {
+protected:
+
+	enum class ButtonState : char {
 		Released,
 		Pressed,
 		Held,
 	};
 
-	enum MouseWheelState : char {
-		Stationary,
-		Up,
-		Down,
-	};
+	// enum class MouseWheelState : char {
+	// 	Stationary,
+	// 	Up,
+	// 	Down,
+	// };
 
-	enum Key : char {
+	enum class Key : char {
 		Backspace = VK_BACK,
 		Tab = VK_TAB,
 		Enter = VK_RETURN,
@@ -212,7 +219,7 @@ protected:
 		Delete = VK_DELETE,
 	};
 
-	enum MouseButton : char {
+	enum class MouseButton : char {
 		Left = VK_LBUTTON,
 		Right = VK_RBUTTON,
 		Middle = VK_MBUTTON,
@@ -220,9 +227,9 @@ protected:
 
 private:
 
-	const Dimensions screen_dimensions;
+	const Vector2<int> screen_dimensions;
 
-	const Dimensions font_dimensions;
+	const Vector2<int> font_dimensions;
 
 	const std::wstring title;
 
@@ -236,12 +243,12 @@ private:
 
 	std::vector<Sprite>	sprites;
 
-	SMALL_RECT window_region;
+	Vector2<int> mouse_position;
 
 public:
 
-	ConsoleGameEngine(const Dimensions& screen_dimensions = { 80, 30 }, const Dimensions& font_dimensions = { 1, 1 }, const std::wstring& title = L"Console Graphics Engine")
-		: screen_dimensions(screen_dimensions), font_dimensions(font_dimensions), title(title), buffer(screen_dimensions.x* screen_dimensions.y), console({ GetStdHandle(STD_OUTPUT_HANDLE), GetStdHandle(STD_INPUT_HANDLE) }), running(false), sprites() {
+	ConsoleGraphicsEngine(const Vector2<int>& screen_dimensions = { 80, 30 }, const Vector2<int>& font_dimensions = { 1, 1 }, const std::wstring& title = L"Console Graphics Engine")
+	: screen_dimensions(screen_dimensions), font_dimensions(font_dimensions), title(title), buffer(screen_dimensions.x* screen_dimensions.y), console({ GetStdHandle(STD_OUTPUT_HANDLE), GetStdHandle(STD_INPUT_HANDLE) }), running(false), sprites(), prev_mouse_position(0, 0) {
 		if (console.output == INVALID_HANDLE_VALUE) {
 			throw std::runtime_error("Failed to get output console handle");
 		}
@@ -251,16 +258,20 @@ public:
 		}
 
 		CONSOLE_CURSOR_INFO cursor_info;
-		GetConsoleCursorInfo(console.output, &cursor_info);
+		if (not GetConsoleCursorInfo(console.output, &cursor_info)) {
+			throw std::runtime_error("Failed to get console cursor info");
+		}
 		cursor_info.bVisible = FALSE;
-		SetConsoleCursorInfo(console.output, &cursor_info);
+		if (not SetConsoleCursorInfo(console.output, &cursor_info)) {
+			throw std::runtime_error("Failed to set console cursor info");
+		}
 
-		window_region = { 0, 0, 1, 1 };
+		SMALL_RECT window_region = { 0, 0, 1, 1 };
 		if (not SetConsoleWindowInfo(console.output, TRUE, &window_region)) {
 			throw std::runtime_error("Failed to set console window info");
 		}
 
-		if (not SetConsoleScreenBufferSize(console.output, { (short)screen_dimensions.x, (short)screen_dimensions.y })) {
+		if (not SetConsoleScreenBufferSize(console.output, { static_cast<short>(screen_dimensions.x), static_cast<short>(screen_dimensions.y) })) {
 			throw std::runtime_error("Failed to set console screen_dimensions buffer screen_dimensions");
 		}
 
@@ -271,12 +282,11 @@ public:
 		CONSOLE_FONT_INFOEX font_info = {
 			sizeof(CONSOLE_FONT_INFOEX),
 			0,
-			{ (short)font_dimensions.x, (short)font_dimensions.y },
+            { static_cast<short>(font_dimensions.x), static_cast<short>(font_dimensions.y) },
 			FF_DONTCARE,
-			FW_NORMAL,
+			0,
 			L""
 		};
-
 		if (not SetCurrentConsoleFontEx(console.output, FALSE, &font_info)) {
 			throw std::runtime_error("Failed to set console font");
 		}
@@ -285,13 +295,13 @@ public:
 		if (not GetConsoleScreenBufferInfo(console.output, &screen_info)) {
 			throw std::runtime_error("Failed to get console screen_dimensions buffer info");
 		} else {
-			Dimensions window_dimensions = Dimensions(screen_info.dwMaximumWindowSize.X, screen_info.dwMaximumWindowSize.Y);
+			Vector2<int> window_dimensions = Vector2<int>(screen_info.dwMaximumWindowSize.X, screen_info.dwMaximumWindowSize.Y);
 			if (screen_dimensions > window_dimensions) {
 				throw std::runtime_error("Screen dimensions are too large, maximum dimensions allowed are '" + (std::string)window_dimensions + "'");
 			}
 		}
 
-		window_region = { 0, 0, (short)(screen_dimensions.x - 1), (short)(screen_dimensions.y - 1) };
+		window_region = { 0, 0, static_cast<short>(screen_dimensions.x - 1), static_cast<short>(screen_dimensions.y - 1) };
 		if (not SetConsoleWindowInfo(console.output, TRUE, &window_region)) {
 			throw std::runtime_error("Failed to set console window info");
 		}
@@ -307,7 +317,7 @@ public:
 		if (not SetConsoleCtrlHandler((PHANDLER_ROUTINE)close_handler, TRUE)) {
 			throw std::runtime_error("Failed to set console control handler");
 		}
-	};
+	}
 
 	void start() {
 		timer.start();
@@ -326,13 +336,17 @@ public:
 
 			render(frame_rate);
 		}
+
+		close();
 	}
 
 protected:
 
-	virtual void initialise() = 0;
+	virtual void initialise() {}
 
-	virtual void update(const double time_elapsed) = 0;
+	virtual void update(const double time_elapsed) {}
+
+	virtual void close() {}
 
 	void stop() {
 		running = false;
@@ -346,30 +360,31 @@ private:
 			throw std::runtime_error("Failed to set console title");
 		}
 
-		if (not WriteConsoleOutputW(console.output, buffer.data(), { (short)screen_dimensions.x, (short)screen_dimensions.y }, { 0, 0 }, &window_region)) {
+		SMALL_RECT window_region = { 0, 0, static_cast<short>(screen_dimensions.x - 1), static_cast<short>(screen_dimensions.y - 1) };
+		if (not WriteConsoleOutputW(console.output, buffer.data(), { static_cast<short>(screen_dimensions.x), static_cast<short>(screen_dimensions.y) }, { 0, 0 }, &window_region)) {
 			throw std::runtime_error("Failed to draw to console");
 		}
 	}
 
 protected:
 
-	Dimensions get_screen_dimensions() {
+	const Vector2<int>& get_screen_dimensions() const {
 		return screen_dimensions;
 	}
 
-	unsigned short get_screen_width() {
+	int get_screen_width() const {
 		return screen_dimensions.x;
 	}
 
-	unsigned short get_screen_height() {
+	int get_screen_height() const {
 		return screen_dimensions.y;
 	}
 
-	ButtonState get_key(Key key) {
-		return get_button(key);
+	ButtonState get_key(Key key) const {
+		return get_button(static_cast<char>(key));
 	}
 
-	ButtonState get_key(char key) {
+	ButtonState get_key(const char key) const {
 		if ((key >= 'A' and key <= 'Z') or (key >= '0' and key <= '9')) {
 			return get_button(key);
 		} else {
@@ -377,19 +392,27 @@ protected:
 		}
 	}
 
-	ButtonState get_mouse_button(MouseButton mouse_button) {
-		return get_button(mouse_button);
+	ButtonState get_mouse_button(const MouseButton mouse_button) const {
+		return get_button(static_cast<const char>(mouse_button));
 	}
 
-	Coordinate get_mouse_position() {
+	const Vector2<int>& get_mouse_position() {
 		const auto& input_records = get_input_record();
 		for (const auto& input_record : input_records) {
 			if (input_record.EventType == MOUSE_EVENT and input_record.Event.MouseEvent.dwEventFlags == MOUSE_MOVED) {
 				const auto& position = input_record.Event.MouseEvent.dwMousePosition;
-				mouse_position = Coordinate(position.X, position.Y);
+				mouse_position = Vector2<int>(position.X, position.Y);
 			}
 		}
 		return mouse_position;
+	}
+
+	int get_mouse_x() {
+		return get_mouse_position().x;
+	}
+
+	int get_mouse_y() {
+		return get_mouse_position().y;
 	}
 
 	// MouseWheelState get_mouse_wheel() {
@@ -407,22 +430,10 @@ protected:
 	// 	return MouseWheelState::Stationary;
 	// }
 
-	short get_mouse_x() {
-		return get_mouse_position().x;
-	}
-
-	short get_mouse_y() {
-		return get_mouse_position().y;
-	}
-
-	const std::vector<CHAR_INFO>& get_buffer() {
-		return buffer;
-	}
-
 private:
 
-	ButtonState get_button(char button) {
-		short state = GetAsyncKeyState(button);
+	ButtonState get_button(const char button) const {
+		auto state = GetAsyncKeyState(button);
 		if (state & 0x8000) {
 			if (state & 0x0001) {
 				return ButtonState::Pressed;
@@ -434,7 +445,7 @@ private:
 		}
 	}
 
-	std::vector<INPUT_RECORD> get_input_record() {
+	const std::vector<INPUT_RECORD> get_input_record() const {
 		DWORD num_events = 0;
 		if (not GetNumberOfConsoleInputEvents(console.input, &num_events)) {
 			throw std::runtime_error("Failed to get number of console input events");
@@ -446,64 +457,63 @@ private:
 		return input_records;
 	}
 
-	Coordinate mouse_position = Coordinate(0, 0);
+	Vector2<int> prev_mouse_position = Vector2<int>(0, 0);
 
 protected:
 
 	// Drawing functions
 
-	void clear_screen(const Pixel& pixel = Pixel(Black, Empty)) {
-		for (unsigned short x = 0; x < screen_dimensions.x; x++) {
-			for (unsigned short y = 0; y < screen_dimensions.y; y++) {
-				draw_pixel(Coordinate(x, y), pixel);
+	void clear_screen(const Pixel& pixel = { Colour::Black, Shade::Empty }) {
+		for (int x = 0; x < screen_dimensions.x; x++) {
+			for (int y = 0; y < screen_dimensions.y; y++) {
+				draw_pixel(Vector2<int>(x, y), pixel);
 			}
 		}
 	}
 
-	void draw_character(const Coordinate& coordinate, const wchar_t character, const Colour colour = White) {
+	void draw_character(const Vector2<int>& coordinate, const wchar_t character, const Colour colour = Colour::White) {
 		if (in_range(coordinate, screen_dimensions)) {
-			unsigned short index = coordinate_to_index(coordinate, screen_dimensions.x);
+			const size_t index = coordinate_to_index(coordinate, screen_dimensions.x);
 			buffer[index].Char.UnicodeChar = character;
-			buffer[index].Attributes = colour;
+			buffer[index].Attributes = static_cast<WORD>(colour);
 		}
 	}
 
-	void draw_pixel(const Coordinate& coordinate, const Pixel& pixel = Pixel()) {
-		draw_character(coordinate, pixel.shade, pixel.colour);
+	void draw_pixel(const Vector2<int>& coordinate, const Pixel& pixel = Pixel()) {
+		draw_character(coordinate, static_cast<wchar_t>(pixel.get_shade()), pixel.get_colour());
 	}
 
-	void draw_sprite(const Coordinate& coordinate, const Sprite& sprite, const double scale = 1.0) {
-		const Dimensions& dimensions = sprite.get_dimensions() * scale;
-		for (short x = 0; x < dimensions.x; x++) {
-			for (short y = 0; y < dimensions.y; y++) {
-				const Pixel& pixel = sprite.get_pixel(Coordinate(x, y) / scale);
-				if (pixel.shade != Empty) {
-					draw_pixel(coordinate + Coordinate(x, y), pixel);
+	void draw_sprite(const Vector2<int>& coordinate, const Sprite& sprite, const unsigned int scale = 1.0) {
+		const Vector2<int>& dimensions = sprite.get_dimensions() * scale;
+		for (int x = 0; x < dimensions.x; x++) {
+			for (int y = 0; y < dimensions.y; y++) {
+				const Pixel& pixel = sprite.get_pixel(Vector2<int>(x, y) / scale);
+				if (pixel.get_shade() != Shade::Empty) {
+					draw_pixel(coordinate + Vector2<int>(x, y), pixel);
 				}
 			}
 		}
 	}
 
 	void draw_entity(const Entity& entity) {
-		draw_sprite(Coordinate((short)entity.get_position().x, (short)entity.get_position().y), entity.get_sprite());
+		draw_sprite(Vector2<int>((int)entity.get_position().x, (int)entity.get_position().y), entity.get_sprite());
 	}
 
-	void draw_string(const Coordinate& coordinate, const std::wstring& string, Colour colour = White) {
-		for (unsigned short i = 0; i < string.length(); i++) {
-			draw_character(coordinate + Coordinate(i, 0), string[i], colour);
+	void draw_string(const Vector2<int>& coordinate, const std::wstring& string, Colour colour = Colour::White) {
+		for (unsigned int i = 0; i < string.length(); i++) {
+			draw_character(coordinate + Vector2<int>(i, 0), string[i], colour);
 		}
 	}
 
-	template <typename type> type abs(type x) { return x < 0 ? -x : x; }
-
-	void draw_line(const Coordinate& start, const Coordinate& end, const Pixel& pixel = Pixel()) {
-		Coordinate current = start;
-		Coordinate delta = end - start;
-		Coordinate step = { (delta.x > 0) - (delta.x < 0), (delta.y > 0) - (delta.y < 0) };
+	void draw_line(const Vector2<int>& start, const Vector2<int>& end, const Pixel& pixel = Pixel()) {
+		Vector2<int> current = start;
+		Vector2<int> delta = end - start;
+		Vector2<int> step = { (delta.x > 0) - (delta.x < 0), (delta.y > 0) - (delta.y < 0) };
+		auto abs = [](int x) { return x > 0 ? x : -x; };
 		delta = { abs(delta.x), abs(delta.y) };
 
 		if (delta.x > delta.y) {
-			short error = delta.x / 2;
+			int error = delta.x / 2;
 			while (current.x != end.x) {
 				draw_pixel(current, pixel);
 				error -= delta.y;
@@ -514,7 +524,7 @@ protected:
 				current.x += step.x;
 			}
 		} else {
-			short error = delta.y / 2;
+			int error = delta.y / 2;
 			while (current.y != end.y) {
 				draw_pixel(current, pixel);
 				error -= delta.x;
@@ -527,33 +537,84 @@ protected:
 		}
 	}
 
-	void draw_triangle(const Coordinate coordinates[3], const Pixel& pixel = Pixel()) {
+	void draw_triangle(const Vector2<int> coordinates[3], const Pixel& pixel = Pixel()) {
 		draw_line(coordinates[0], coordinates[1], pixel);
 		draw_line(coordinates[1], coordinates[2], pixel);
 		draw_line(coordinates[2], coordinates[0], pixel);
 	}
 
-	void draw_circle(const Coordinate& centre, const unsigned short radius = 1, const Pixel& pixel = Pixel()) {
-		Coordinate current;
-		for (current.x = -radius; current.x <= radius; current.x++) {
-			for (current.y = -radius; current.y <= radius; current.y++) {
-				if (current.magnitude() == radius) {
-					draw_pixel(centre + current, pixel);
-				}
-			}
-		}
+	void draw_filled_triangle(const Vector2<int> coordinates[3], const Pixel& pixel = Pixel()) {
+		throw std::runtime_error("To be implemented");
+		// TODO
 	}
 
-	void draw_filled_circle(const Coordinate& centre, const unsigned short radius = 1, const Pixel& pixel = Pixel()) {
-		Coordinate current;
-		for (current.x = -radius; current.x <= radius; current.x++) {
-			for (current.y = -radius; current.y <= radius; current.y++) {
-				if (current.magnitude() <= radius) {
-					draw_pixel(centre + current, pixel);
-				}
-			}
-		}
+	void draw_circle(const Vector2<int>& centre, const int radius = 1, const Pixel& pixel = Pixel()) {
+		Vector2<int> current = { 0, radius };
+        int p = 1 - radius;
+		while (current.x <= current.y) {
+            draw_pixel(centre + current, pixel);
+            draw_pixel(centre - current, pixel);
+            draw_pixel(centre + Vector2<int>(current.y, current.x), pixel);
+            draw_pixel(centre - Vector2<int>(current.y, current.x), pixel);
+            draw_pixel(centre + Vector2<int>(current.x, current.y), pixel);
+            draw_pixel(centre - Vector2<int>(current.x, current.y), pixel);
+            draw_pixel(centre + Vector2<int>(current.x, -current.y), pixel);
+            draw_pixel(centre - Vector2<int>(current.x, -current.y), pixel);
+			if (p < 0) {
+                p += 2 * current.x + 3;
+			} else {
+                p += 2 * (current.x - current.y) + 5;
+                current.y--;
+            }
+            current.x++;
+        }
 	}
+
+	void draw_filled_circle(const Vector2<int>& centre, const int radius = 1, const Pixel& pixel = Pixel()) {
+		Vector2<int> current = { 0, radius };
+        int p = 1 - radius;
+		while (current.x <= current.y) {
+            draw_line(centre + Vector2<int>(-current.y, current.x), centre + Vector2<int>(current.y, current.x), pixel);
+            draw_line(centre + Vector2<int>(-current.x, current.y), centre + Vector2<int>(current.x, current.y), pixel);
+            draw_line(centre + Vector2<int>(-current.x, -current.y), centre + Vector2<int>(current.x, -current.y), pixel);
+            draw_line(centre + Vector2<int>(-current.y, -current.x), centre + Vector2<int>(current.y, -current.x), pixel);
+			if (p < 0) {
+                p += 2 * current.x + 3;
+			} else {
+                p += 2 * (current.x - current.y) + 5;
+                current.y--;
+            }
+            current.x++;
+        }
+	}
+
+	void draw_rectangle(const Vector2<int>& top_left, const Vector2<int>& bottom_right, const Pixel& pixel = Pixel()) {
+        Vector2<int> current;
+		for (current.x = top_left.x; current.x <= bottom_right.x; current.x++) {
+			for (current.y = top_left.y; current.y <= bottom_right.y; current.y++) {
+				if (current.x == top_left.x or current.x == bottom_right.x or
+					current.y == top_left.y or current.y == bottom_right.y) {
+                    draw_pixel(current, pixel);
+                }
+            }
+        }
+    }
+
+	void draw_filled_rectangle(const Vector2<int>& top_left, const Vector2<int>& bottom_right, const Pixel& pixel = Pixel()) {
+        Vector2<int> current;
+		for (current.x = top_left.x; current.x <= bottom_right.x; current.x++) {
+			for (current.y = top_left.y; current.y <= bottom_right.y; current.y++) {
+                draw_pixel(current, pixel);
+            }
+        }
+    }
+
+	void draw_polygon(const std::vector<Vector2<int>>& vertices, const Pixel& pixel = Pixel()) {
+		for (unsigned int i = 0; i < vertices.size(); i++) {
+			draw_line(vertices[i], vertices[(i + 1) % vertices.size()], pixel);
+		}
+		draw_line(vertices[vertices.size() - 1], vertices[0], pixel);
+    }
 
 private:
 

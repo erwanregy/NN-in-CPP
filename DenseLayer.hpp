@@ -32,4 +32,22 @@ struct DenseLayer : public Layer {
             neuron.update_parameters(inputs, learning_rate);
         }
     }
+
+    void save(const std::string& layer_path) override {
+        std::filesystem::create_directory(layer_path);
+        for (size_t n = 0; n < neurons.size(); n++) {
+            std::string neuron_path = layer_path + "/neuron_" + std::to_string(n);
+            neurons[n].save(neuron_path);
+        }
+    }
+
+    void load(const std::string& layer_path) override {
+        if (not std::filesystem::exists(layer_path)) {
+            throw std::runtime_error("Folder '" + layer_path + "' does not exist");
+        }
+        for (size_t n = 0; n < neurons.size(); n++) {
+            std::string neuron_path = layer_path + "/neuron_" + std::to_string(n);
+            neurons[n].load(neuron_path);
+        }
+    }
 };
