@@ -5,8 +5,6 @@ VisualStudioVersion = 17.5.33530.505
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Neural Network", "NeuralNetwork.vcxproj", "{C0301456-8FFA-4604-976D-D574A29A0316}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Console Graphics Engine", "..\Console Graphics Engine\Console Graphics Engine.vcxproj", "{EC46F454-7AE8-4077-991C-FF4AC80EEFFB}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -23,19 +21,11 @@ Global
 		{C0301456-8FFA-4604-976D-D574A29A0316}.Release|x64.Build.0 = Release|x64
 		{C0301456-8FFA-4604-976D-D574A29A0316}.Release|x86.ActiveCfg = Release|Win32
 		{C0301456-8FFA-4604-976D-D574A29A0316}.Release|x86.Build.0 = Release|Win32
-		{EC46F454-7AE8-4077-991C-FF4AC80EEFFB}.Debug|x64.ActiveCfg = Debug|x64
-		{EC46F454-7AE8-4077-991C-FF4AC80EEFFB}.Debug|x64.Build.0 = Debug|x64
-		{EC46F454-7AE8-4077-991C-FF4AC80EEFFB}.Debug|x86.ActiveCfg = Debug|Win32
-		{EC46F454-7AE8-4077-991C-FF4AC80EEFFB}.Debug|x86.Build.0 = Debug|Win32
-		{EC46F454-7AE8-4077-991C-FF4AC80EEFFB}.Release|x64.ActiveCfg = Release|x64
-		{EC46F454-7AE8-4077-991C-FF4AC80EEFFB}.Release|x64.Build.0 = Release|x64
-		{EC46F454-7AE8-4077-991C-FF4AC80EEFFB}.Release|x86.ActiveCfg = Release|Win32
-		{EC46F454-7AE8-4077-991C-FF4AC80EEFFB}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {215C8FC6-9D47-421A-8F98-D960A091E145}
+		SolutionGuid = {3F3B4680-CA7C-483A-9476-90DC8BA4B32C}
 	EndGlobalSection
 EndGlobal

@@ -53,11 +53,11 @@ struct Neuron {
     }
 
     const double& calc_output(const std::vector<double>& inputs) {
-        if (inputs.size() != weights.size()) {
-            throw std::runtime_error("Number of inputs does not match number of weights");
-        }
+        // if (inputs.size() != weights.size()) {
+        //     throw std::runtime_error("Number of inputs does not match number of weights");
+        // }
         double sum = bias;
-        for (size_t i = 0; i < inputs.size(); i++) {
+        for (size_t i = 0; i < weights.size(); i++) {
             sum += weights[i] * inputs[i];
         }
         return output = activation.function(sum);
